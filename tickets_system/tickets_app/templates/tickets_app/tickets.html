@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ event.name }} - Tickets{% endblock %}
+
+{% block content %}
+    <h1>{{ event.name }}</h1>
+    <h2>{{ event.event_date }}</h2>
+
+    <h3>Available Tickets:</h3>
+    {% if tickets %}
+        <ul>
+        {% for ticket in tickets %}
+            <li>
+                Seat: {{ ticket.seat }}, Price: ${{ ticket.price }}
+                <form method="post" action="{% url 'reserve_ticket' ticket.id %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit">Buy</button>
+                </form>
+            </li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No available tickets.</p>
+    {% endif %}
+{% endblock %}

@@ -1,3 +1,5 @@
+import uuid
+
 from django.contrib.auth.models import User
 from django.db import models
 
@@ -8,15 +10,18 @@ class Event(models.Model):
         return self.name
     class Meta:
         db_table = 'events'
+
 class Ticket(models.Model):
     STATUS_CHOICES = [
         ('available', 'Available'),
+        ('reserved', 'Reserved'),
         ('sold', 'Sold')
     ]
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
     seat = models.IntegerField()
     price = models.DecimalField(max_digits=8, decimal_places=2)
     status = models.CharField(max_length=16, choices=STATUS_CHOICES)
+    reserved_until = models.DateTimeField(null=True, blank=True)
     def __str__(self):
         return f"Ticket: {self.id} for {self.event.name}, seat: {self.seat}, price: {self.price}"
     class Meta:

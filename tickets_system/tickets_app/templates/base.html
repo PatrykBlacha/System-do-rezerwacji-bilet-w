@@ -1,0 +1,27 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}My Tickets App{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'tickets_app/style.css' %}">
+</head>
+<body>
+    <header>
+        {% if user.is_authenticated %}
+            <p>Zalogowany jako: {{ user.username }} ({{ user.email }})</p>
+            <form method="post" action="{% url 'logout' %}" style="display:inline;">
+              {% csrf_token %}
+              <button type="submit">Wyloguj się</button>
+            </form>
+        {% else %}
+            <p>Nie jesteś zalogowany. <a href="{% url 'login' %}">Zaloguj się </a> (<a href="{% url 'register' %}">Zarejestruj się</a>)</p>
+
+        {% endif %}
+    </header>
+
+    <main>
+        {% block content %}
+        {% endblock %}
+    </main>
+</body>
+</html>
