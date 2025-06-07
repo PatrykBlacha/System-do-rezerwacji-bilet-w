@@ -1,0 +1,23 @@
+
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Potwierdzenie zamówienia</title>
+    <link rel="stylesheet" href="{% static 'tickets_app/style.css' %}">
+</head>
+<body>
+    <h1>Podsumowanie zamówienia biletu</h1>
+    <p>Event: {{ticket.event.name}}</p>
+    <p>Data: {{ticket.event.event_date}}</p>
+    <p>seat: {{ ticket.seat }} </p>
+    <p>Cena: {{ ticket.price }} PLN</p>
+    <p>Status: {{ ticket.status }}</p>
+    <p>ID zamówienia: {{ order.id }}</p>
+    <p>Na osobe: {{ order.client }}</p>
+    <a href="{% url 'home' %}">
+        <button type="button">Powrót do strony głównej</button>
+    </a>
+</body>
+</html>
+
