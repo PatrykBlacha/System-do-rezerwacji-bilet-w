@@ -9,9 +9,10 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views.decorators.http import require_POST
 
-from .models import Ticket, Event, Client, Order
+from .models import Ticket, Event, Participant, Order, OrderDetails
 from django.contrib.auth import login
 from .forms import CustomUserCreationForm
+from django.db import connection
 
 class IndexView(generic.ListView):
     template_name = 'tickets_app/index.html'
@@ -19,169 +20,138 @@ class IndexView(generic.ListView):
 
     def get_queryset(self):
         now = timezone.now()
+        unlock_reserved_tickets()
         return Event.objects.all().filter(event_date__gt=now).order_by('event_date')
 
+def unlock_reserved_tickets():
+    now = timezone.now()
+
+    expired_tickets = Ticket.objects.filter(
+        status='reserved',
+        reserved_until__lt=now
+    )
+
+    for ticket in expired_tickets:
+        ticket.status = 'available'
+        ticket.reserved_until = None
+        ticket.save()
+
+        details = OrderDetails.objects.filter(ticket=ticket)
+        for detail in details:
+            order = detail.order
+            order_tickets = OrderDetails.objects.filter(order=order).select_related('ticket')
+
+            if all(d.ticket.status == 'available' for d in order_tickets):
+                order.status = 'canceled'
+                order.save()
+
+@login_required
+@transaction.atomic
 def tickets_view(request, event_id):
     event = get_object_or_404(Event, pk=event_id)
-    tickets = Ticket.objects.filter(event=event, status='available').order_by('seat')
+    tickets = Ticket.objects.select_for_update().filter(event=event, status='available').order_by('seat')
+
+    if request.method == "POST":
+        selected_ticket_ids = request.POST.getlist('ticket_ids')
+
+        if not selected_ticket_ids:
+            messages.error(request, "Nie wybrano żadnych biletów.")
+            return redirect('tickets', event_id=event_id)
+
+        try:
+            with transaction.atomic():
+                order = Order.objects.create(user=request.user, status='pending')
+
+                for ticket_id in selected_ticket_ids:
+                    ticket = Ticket.objects.select_for_update().get(id=ticket_id)
+                    if ticket.status != 'available':
+                        raise Exception(f"Bilet {ticket.seat} jest już niedostępny.")
+
+                    participant = Participant.objects.create(user=request.user)
+                    ticket.status = 'reserved'
+                    ticket.reserved_until = timezone.now() + timedelta(minutes=10)
+                    ticket.save()
+
+                    OrderDetails.objects.create(
+                        order=order,
+                        participant=participant,
+                        ticket=ticket
+                    )
+
+            messages.success(request, "Bilety zostały dodane do koszyka.")
+            return redirect('cart')
+
+        except Exception as e:
+            messages.error(request, str(e))
+            return redirect('tickets', event_id=event_id)
+
     return render(request, 'tickets_app/tickets.html', {'event': event, "tickets": tickets})
 
+
 @login_required
-@transaction.atomic
-def reserve_ticket_view(request, ticket_id):
+def cart_view(request):
     try:
-        client = Client.objects.get(user=request.user)
-        print(f"[DEBUG] Client ID: {client.id}, Ticket ID: {ticket_id}")
-    except Client.DoesNotExist:
-        print("[ERROR] Client does not exist")
-        messages.error(request, "Brak danych klienta.")
-        return redirect('home')
+        order = Order.objects.get(user=request.user, status='pending')
+    except Order.DoesNotExist:
+        order = None
+        order_details = []
+    else:
+        order_details = OrderDetails.objects.filter(order=order).select_related('ticket', 'participant')
 
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute("CALL reserve_ticket_for_client(%s, %s);", [client.id, ticket_id])
-            cursor.execute("SELECT status FROM tickets WHERE id = %s", [ticket_id])
-            status = cursor.fetchone()
-            print(f"[DEBUG] Ticket status after reservation: {status}")
-            messages.success(request, "Zarezerwowano bilet.")
-    except Exception as e:
-        print(f"[ERROR] Exception during reservation: {e}")
-        messages.error(request, f"Błąd rezerwacji: {e}")
-        return redirect('home')
+        if request.method == "POST":
+            for detail in order_details:
+                participant = detail.participant
+                participant.first_name = request.POST.get(f'first_name_{participant.id}', '')
+                participant.last_name = request.POST.get(f'last_name_{participant.id}', '')
+                participant.pesel = request.POST.get(f'pesel_{participant.id}', '')
+                participant.save()
+            return redirect('finalize_cart')
 
-    return redirect('confirm_purchase', ticket_id=ticket_id)
-
-
-
-from django.db import connection
+    return render(request, 'tickets_app/cart.html', {
+        'order': order,
+        'order_details': order_details
+    })
 
 
 @login_required
 @transaction.atomic
-def order_confirmation(request, ticket_id):
-    ticket = get_object_or_404(Ticket, pk=ticket_id)
-
+def finalize_cart(request):
     try:
-        client = Client.objects.get(user=request.user)
-    except Client.DoesNotExist:
-        messages.error(request, "Brak danych klienta.")
+        order = Order.objects.select_for_update().get(user=request.user, status='pending')
+    except Order.DoesNotExist:
+        messages.error(request, "Brak zamówienia do finalizacji.")
         return redirect('home')
 
-    if request.method == 'POST':
-        try:
-            with connection.cursor() as cursor:
-                cursor.execute("SELECT purchase_ticket(%s, %s);", [client.id, ticket.id])
-        except Exception as e:
-            messages.error(request, f"Błąd przy zakupie: {e}")
-            return redirect('home')
+    order_details = OrderDetails.objects.filter(order=order).select_related('ticket', 'participant')
 
-        order = Order.objects.filter(client=client, ticket=ticket).order_by('-created_at').first()
-        return redirect('order_success', order_id=order.id)
+    for detail in order_details:
+        ticket = detail.ticket
+        ticket.status = 'sold'
+        ticket.save()
 
-    return render(request, 'tickets_app/order_confirmation.html', {'ticket': ticket})
+    order.status = 'completed'
+    order.updated_at = timezone.now()
+    order.save()
 
+    messages.success(request, "Zakup zakończony sukcesem!")
+    return redirect('my_tickets')
 
-
-def order_success(request, order_id):
-    order = get_object_or_404(Order, pk=order_id)
-    ticket = order.ticket
-    return render(request, 'tickets_app/order_success.html', {'ticket': ticket, 'order': order})
 
 def register(request):
     if request.method == "POST":
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save(commit=False)
-            # Ustaw dodatkowe pola User
             user.first_name = form.cleaned_data['first_name']
             user.last_name = form.cleaned_data['last_name']
             user.email = form.cleaned_data['email']
             user.save()
-
-            # Tworzymy Client powiązany z tym User
-            Client.objects.create(
-                user=user,
-                first_name=form.cleaned_data['first_name'],
-                last_name=form.cleaned_data['last_name'],
-                email=form.cleaned_data['email']
-            )
 
             login(request, user)
             return redirect('home')
     else:
         form = CustomUserCreationForm()
     return render(request, 'registration/register.html', {'form': form})
-
-
-@login_required
-@transaction.atomic
-def group_purchase_view(request, event_id):
-    print("[DEBUG] Group purchase view accessed")
-    event = get_object_or_404(Event, id=event_id)
-    tickets = Ticket.objects.filter(event=event, status='available').order_by('seat')
-
-    if request.method == 'POST':
-        ticket_ids = request.POST.getlist('ticket_ids')
-
-        first_names = []
-        last_names = []
-        emails = []
-        addresses = []
-
-        for ticket_id in ticket_ids:
-            first_names.append(request.POST.get(f'first_name_{ticket_id}'))
-            last_names.append(request.POST.get(f'last_name_{ticket_id}'))
-            emails.append(request.POST.get(f'email_{ticket_id}'))
-            addresses.append(request.POST.get(f'address_{ticket_id}'))
-
-        print("[DEBUG] ticket_ids:", ticket_ids)
-        print("[DEBUG] first_names:", first_names)
-
-        if not all([ticket_ids, first_names, last_names, emails, addresses]):
-            messages.error(request, "Wszystkie dane klientów muszą być wypełnione.")
-            return redirect('group_purchase', event_id=event_id)
-
-        if not (len(ticket_ids) == len(first_names) == len(last_names) == len(emails) == len(addresses)):
-            messages.error(request, "Dla każdego biletu muszą być podane kompletne dane klienta.")
-            return redirect('group_purchase', event_id=event_id)
-
-        client_ids = []
-        for i in range(len(ticket_ids)):
-            client = Client.objects.create(
-                first_name=first_names[i],
-                last_name=last_names[i],
-                email=emails[i],
-                address=addresses[i]
-            )
-            client_ids.append(client.id)
-
-        try:
-            with transaction.atomic():
-                for client_id, ticket_id in zip(client_ids, ticket_ids):
-                    ticket = Ticket.objects.select_for_update().get(id=ticket_id)
-
-                    if ticket.status != 'available':
-                        raise Exception(f"Bilet {ticket.id} nie jest dostępny.")
-
-                    ticket.status = 'sold'
-                    ticket.save()
-
-                    Order.objects.create(
-                        client_id=client_id,
-                        ticket=ticket,
-                        status='completed',
-                        created_at=timezone.now(),
-                        updated_at=timezone.now()
-                    )
-
-            messages.success(request, "Zakup grupowy zakończony sukcesem.")
-            return redirect('home')
-
-        except Exception as e:
-            messages.error(request, f"Błąd: {e}")
-            return redirect('group_purchase', event_id=event_id)
-
-    return render(request, 'tickets_app/group_purchase.html', {'event': event, 'tickets': tickets})
 
 
 

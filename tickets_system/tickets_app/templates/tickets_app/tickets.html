@@ -1,26 +1,44 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}{{ event.name }} - Tickets{% endblock %}
+{% block title %}{{ event.name }} - Wybierz bilety{% endblock %}
 
 {% block content %}
-    <h1>{{ event.name }}</h1>
-    <h2>{{ event.event_date }}</h2>
+  <h1>{{ event.name }}</h1>
+  <h2>{{ event.event_date }}</h2>
 
-    <h3>Available Tickets:</h3>
-    {% if tickets %}
-        <ul>
-        {% for ticket in tickets %}
-            <li>
-                Seat: {{ ticket.seat }}, Price: ${{ ticket.price }}
-                <form method="post" action="{% url 'reserve_ticket' ticket.id %}" style="display:inline;">
-                    {% csrf_token %}
-                    <button type="submit">Buy</button>
-                </form>
-            </li>
-        {% endfor %}
-        </ul>
-    {% else %}
-        <p>No available tickets.</p>
-    {% endif %}
+  <h3>Dostępne bilety:</h3>
+
+  {% if tickets %}
+    <form method="post" action="">
+      {% csrf_token %}
+      <table>
+        <thead>
+          <tr>
+            <th>Wybierz</th>
+            <th>Miejsce</th>
+            <th>Cena</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ticket in tickets %}
+            <tr>
+              <td>
+                <input type="checkbox" name="ticket_ids" value="{{ ticket.id }}" id="ticket_{{ ticket.id }}">
+              </td>
+              <td><label for="ticket_{{ ticket.id }}">{{ ticket.seat }}</label></td>
+              <td>${{ ticket.price }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <button type="submit">Dodaj do koszyka</button>
+    </form>
+  {% else %}
+    <p>Brak dostępnych biletów.</p>
+  {% endif %}
+
+  <p>
+    <a href="{% url 'home' %}">← Powrót do wydarzeń</a>
+  </p>
 {% endblock %}
