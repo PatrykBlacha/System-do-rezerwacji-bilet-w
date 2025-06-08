@@ -11,14 +11,10 @@
         {% for event in latest_events %}
             <li>
                 <a href="{% url 'tickets' event.id %}">{{ event.name }}</a>
-                – <a href="{% url 'group_purchase' event.id %}">Zakup grupowy</a>
             </li>
         {% endfor %}
         </ul>
     {% else %}
         <p>No polls are available.</p>
     {% endif %}
-    <p>
-        <a href="{% url 'my_tickets' %}">🧾 Moje Bilety</a>
-    </p>
 {% endblock %}
