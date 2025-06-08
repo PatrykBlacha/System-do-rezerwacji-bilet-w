@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Moje Bilety{% endblock %}
+
+{% block content %}
+    <h2>Moje Bilety</h2>
+    {% if tickets %}
+        <ul>
+            {% for ticket in tickets %}
+                <li>
+                    Wydarzenie: {{ ticket.event_id }} |
+                    Miejsce: {{ ticket.seat }} |
+                    Zakupiono: {{ ticket.updated_at }}
+                    <form action="{% url 'cancel_order' ticket.order_id %}" method="post" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit">Anuluj</button>
+                    </form>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Brak biletów.</p>
+    {% endif %}
+{% endblock %}
