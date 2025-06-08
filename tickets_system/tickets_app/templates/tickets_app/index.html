@@ -9,7 +9,10 @@
     {% if latest_events %}
         <ul>
         {% for event in latest_events %}
-            <li><a href="/events/{{ event.id }}/">{{ event.name }}</a></li>
+            <li>
+                <a href="{% url 'tickets' event.id %}">{{ event.name }}</a>
+                – <a href="{% url 'group_purchase' event.id %}">Zakup grupowy</a>
+            </li>
         {% endfor %}
         </ul>
     {% else %}
