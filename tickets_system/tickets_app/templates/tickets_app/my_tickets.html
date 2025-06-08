@@ -8,7 +8,7 @@
         <ul>
             {% for ticket in tickets %}
                 <li>
-                    Wydarzenie ID: {{ ticket.event_id }} |
+                    Wydarzenie: {{ ticket.event_name }} |
                     Miejsce: {{ ticket.seat_number }} |
                     UUID: {{ ticket.ticket_id }} |
                     <form action="{% url 'cancel_order' ticket.order_id %}" method="post" style="display:inline;">

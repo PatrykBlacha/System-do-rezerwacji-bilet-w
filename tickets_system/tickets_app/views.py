@@ -160,7 +160,7 @@ def my_tickets(request):
     user_id = request.user.id
     with connection.cursor() as cursor:
         cursor.execute("""
-            SELECT order_id, "ticket_UUID", event_id, seat, updated_at
+            SELECT order_id, "ticket_UUID", event_id, event_name, seat, updated_at
             FROM user_tickets_view
             WHERE user_id = %s
         """, [user_id])
@@ -171,8 +171,9 @@ def my_tickets(request):
             'order_id': row[0],
             'ticket_id': row[1],
             'event_id': row[2],
-            'seat_number': row[3],
-            'updated_at': row[4],
+            'event_name': row[3],
+            'seat_number': row[4],
+            'updated_at': row[5],
         }
         for row in rows
     ]
