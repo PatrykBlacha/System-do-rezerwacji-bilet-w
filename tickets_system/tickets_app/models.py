@@ -30,8 +30,7 @@ class Ticket(models.Model):
 class Client(models.Model):
     first_name = models.CharField(max_length=64)
     last_name = models.CharField(max_length=64)
-    email = models.EmailField()
-    address = models.CharField(max_length=64)
+    pesel = models.CharField(max_length=11)
     user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
@@ -44,12 +43,21 @@ class Order(models.Model):
         ('completed', 'Completed'),
         ('canceled', 'Canceled'),
     ]
-    client = models.ForeignKey(Client, on_delete=models.CASCADE)
-    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE)
     status = models.CharField(max_length=16, choices=STATUS_CHOICES)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    def __str__(self):
+        return f"Order {self.id}"
+    class Meta:
+        db_table = 'orders'
+
+class OrderDetails(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE)
+    client = models.ForeignKey(Client, on_delete=models.CASCADE)
+    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE)
+    ticket_UUID = models.UUIDField(default=uuid.uuid4, editable=False)
     def __str__(self):
         return f"Order by {self.client} for ticket {self.ticket}"
     class Meta:
-        db_table = 'orders'
+        db_table = 'orders_details'

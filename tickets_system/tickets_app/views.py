@@ -103,8 +103,7 @@ def register(request):
                 user=user,
                 first_name=form.cleaned_data['first_name'],
                 last_name=form.cleaned_data['last_name'],
-                email=form.cleaned_data['email'],
-                address=form.cleaned_data.get('address', '')  # jeśli adres jest podany
+                email=form.cleaned_data['email']
             )
 
             login(request, user)
