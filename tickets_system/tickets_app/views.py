@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.views import generic
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.views.decorators.http import require_POST
 
 from .models import Ticket, Event, Client, Order
 from django.contrib.auth import login
@@ -114,16 +115,28 @@ def register(request):
 
 
 @login_required
+@transaction.atomic
 def group_purchase_view(request, event_id):
+    print("[DEBUG] Group purchase view accessed")
     event = get_object_or_404(Event, id=event_id)
     tickets = Ticket.objects.filter(event=event, status='available').order_by('seat')
 
     if request.method == 'POST':
-        ticket_ids = request.POST.getlist('ticket_id')
-        first_names = request.POST.getlist('first_name')
-        last_names = request.POST.getlist('last_name')
-        emails = request.POST.getlist('email')
-        addresses = request.POST.getlist('address')
+        ticket_ids = request.POST.getlist('ticket_ids')
+
+        first_names = []
+        last_names = []
+        emails = []
+        addresses = []
+
+        for ticket_id in ticket_ids:
+            first_names.append(request.POST.get(f'first_name_{ticket_id}'))
+            last_names.append(request.POST.get(f'last_name_{ticket_id}'))
+            emails.append(request.POST.get(f'email_{ticket_id}'))
+            addresses.append(request.POST.get(f'address_{ticket_id}'))
+
+        print("[DEBUG] ticket_ids:", ticket_ids)
+        print("[DEBUG] first_names:", first_names)
 
         if not all([ticket_ids, first_names, last_names, emails, addresses]):
             messages.error(request, "Wszystkie dane klientów muszą być wypełnione.")
@@ -143,17 +156,77 @@ def group_purchase_view(request, event_id):
             )
             client_ids.append(client.id)
 
-        with connection.cursor() as cursor:
-            try:
-                cursor.execute(
-                    "CALL assign_tickets_group(%s, %s);",
-                    [client_ids, list(map(int, ticket_ids))]
-                )
-                messages.success(request, "Zakup grupowy zakończony sukcesem.")
-                return redirect('home')
-            except Exception as e:
-                messages.error(request, f"Błąd: {e}")
-                return redirect('group_purchase', event_id=event_id)
+        try:
+            with transaction.atomic():
+                for client_id, ticket_id in zip(client_ids, ticket_ids):
+                    ticket = Ticket.objects.select_for_update().get(id=ticket_id)
+
+                    if ticket.status != 'available':
+                        raise Exception(f"Bilet {ticket.id} nie jest dostępny.")
+
+                    ticket.status = 'sold'
+                    ticket.save()
+
+                    Order.objects.create(
+                        client_id=client_id,
+                        ticket=ticket,
+                        status='completed',
+                        created_at=timezone.now(),
+                        updated_at=timezone.now()
+                    )
+
+            messages.success(request, "Zakup grupowy zakończony sukcesem.")
+            return redirect('home')
+
+        except Exception as e:
+            messages.error(request, f"Błąd: {e}")
+            return redirect('group_purchase', event_id=event_id)
 
     return render(request, 'tickets_app/group_purchase.html', {'event': event, 'tickets': tickets})
 
+
+
+@login_required
+def my_tickets(request):
+    user_id = request.user.id
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT order_id, ticket_id, event_id, seat, updated_at
+            FROM user_tickets_view
+            WHERE user_id = %s
+        """, [user_id])
+        rows = cursor.fetchall()
+
+    tickets = [
+        {
+            'order_id': row[0],
+            'ticket_id': row[1],
+            'event_id': row[2],
+            'seat_number': row[3],
+            'updated_at': row[4],
+        }
+        for row in rows
+    ]
+
+    return render(request, 'tickets_app/my_tickets.html', {'tickets': tickets})
+
+
+@require_POST
+@login_required
+def cancel_order(request, order_id):
+    user_id = request.user.id
+
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT client_id FROM orders WHERE id = %s", [order_id])
+        row = cursor.fetchone()
+        if not row or row[0] != user_id:
+            messages.error(request, "Nie masz dostępu do tego biletu.")
+            return redirect('my_tickets')
+
+        try:
+            cursor.execute("SELECT cancel_order(%s)", [order_id])
+            messages.success(request, "Bilet został anulowany.")
+        except Exception as e:
+            messages.error(request, f"Błąd: {str(e)}")
+
+    return redirect('my_tickets')

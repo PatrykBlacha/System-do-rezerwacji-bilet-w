@@ -8,16 +8,29 @@
     {% csrf_token %}
     {% for ticket in tickets %}
         <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #ccc;">
-            <input type="checkbox" name="ticket_ids" value="{{ ticket.id }}">
+            <input type="checkbox" name="ticket_ids" value="{{ ticket.id }}" id="check_{{ ticket.id }}">
             <strong>Miejsce:</strong> {{ ticket.seat }}, <strong>Cena:</strong> {{ ticket.price }}<br>
 
-            <input type="text" name="first_name_{{ ticket.id }}" placeholder="Imię" required>
-            <input type="text" name="last_name_{{ ticket.id }}" placeholder="Nazwisko" required>
-            <input type="email" name="email_{{ ticket.id }}" placeholder="Email" required>
-            <input type="text" name="address_{{ ticket.id }}" placeholder="Adres" required>
+            <input type="text" name="first_name_{{ ticket.id }}" placeholder="Imię" class="input_{{ ticket.id }}">
+            <input type="text" name="last_name_{{ ticket.id }}" placeholder="Nazwisko" class="input_{{ ticket.id }}">
+            <input type="email" name="email_{{ ticket.id }}" placeholder="Email" class="input_{{ ticket.id }}">
+            <input type="text" name="address_{{ ticket.id }}" placeholder="Adres" class="input_{{ ticket.id }}">
         </div>
     {% endfor %}
     <button type="submit">Kup grupowo</button>
 </form>
 
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll("input[type=checkbox][name='ticket_ids']").forEach(function (checkbox) {
+        const ticketId = checkbox.value;
+        checkbox.addEventListener("change", function () {
+            const inputs = document.querySelectorAll(`.input_${ticketId}`);
+            inputs.forEach(function (input) {
+                input.required = checkbox.checked;
+            });
+        });
+    });
+});
+</script>
 {% endblock %}
