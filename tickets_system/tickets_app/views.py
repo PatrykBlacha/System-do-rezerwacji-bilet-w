@@ -160,7 +160,7 @@ def my_tickets(request):
     user_id = request.user.id
     with connection.cursor() as cursor:
         cursor.execute("""
-            SELECT order_id, ticket_id, event_id, seat, updated_at
+            SELECT order_id, "ticket_UUID", event_id, seat, updated_at
             FROM user_tickets_view
             WHERE user_id = %s
         """, [user_id])
@@ -183,19 +183,34 @@ def my_tickets(request):
 @require_POST
 @login_required
 def cancel_order(request, order_id):
-    user_id = request.user.id
+    user = request.user
 
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT client_id FROM orders WHERE id = %s", [order_id])
-        row = cursor.fetchone()
-        if not row or row[0] != user_id:
-            messages.error(request, "Nie masz dostępu do tego biletu.")
+    try:
+        # Pobierz zamówienie użytkownika
+        order = Order.objects.get(id=order_id, user=user)
+
+        if order.status == 'canceled':
+            messages.warning(request, "Zamówienie już zostało anulowane.")
             return redirect('my_tickets')
 
-        try:
-            cursor.execute("SELECT cancel_order(%s)", [order_id])
-            messages.success(request, "Bilet został anulowany.")
-        except Exception as e:
-            messages.error(request, f"Błąd: {str(e)}")
+        # Znajdź wszystkie bilety w tym zamówieniu
+        order_details = OrderDetails.objects.filter(order=order)
+
+        # Zmień status każdego biletu z powrotem na 'available'
+        for detail in order_details:
+            ticket = detail.ticket
+            ticket.status = 'available'
+            ticket.reserved_until = None
+            ticket.save()
+
+        # Zmień status zamówienia
+        order.status = 'canceled'
+        order.save()
+
+        messages.success(request, "Zamówienie zostało anulowane.")
+    except Order.DoesNotExist:
+        messages.error(request, "Nie znaleziono zamówienia.")
+    except Exception as e:
+        messages.error(request, f"Wystąpił błąd: {e}")
 
     return redirect('my_tickets')
