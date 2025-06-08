@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Szczegóły Zamówienia{% endblock %}
+
+{% block content %}
+  <h2>Zamówienie #{{ order.id }}</h2>
+  <p>Status: {{ order.status }}</p>
+  <p>Data: {{ order.updated_at|date:"Y-m-d H:i" }}</p>
+
+  <h3>Bilety:</h3>
+  <ul>
+    {% for detail in details %}
+      <li>
+        Wydarzenie: {{ detail.ticket.event.name }} |
+          Data: {{ detail.ticket.event.event_date }} |
+        Miejsce: {{ detail.ticket.seat }} |
+        Uczestnik: {{ detail.participant.first_name }} {{ detail.participant.last_name }} |
+          UUID: {{ detail.ticket_UUID }}
+      </li>
+    {% endfor %}
+  </ul>
+
+  <a href="{% url 'my_orders' %}">← Powrót do zamówień</a>
+{% endblock %}

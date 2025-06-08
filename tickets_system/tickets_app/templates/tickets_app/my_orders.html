@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Moje Zamówienia{% endblock %}
+
+{% block content %}
+  <h2>Moje Zamówienia</h2>
+  {% if orders %}
+    <ul>
+      {% for order in orders %}
+        <li>
+          Zamówienie #{{ order.id }} |
+          Status: {{ order.status }} |
+          Data: {{ order.updated_at|date:"Y-m-d H:i" }} |
+          <a href="{% url 'order_details' order.id %}">Szczegóły</a>
+
+          {% if order.status != "canceled" %}
+            <form action="{% url 'cancel_order' order.id %}" method="post" style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" onclick="return confirm('Na pewno chcesz anulować to zamówienie?');">
+                Anuluj zamówienie
+              </button>
+            </form>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>Brak zamówień.</p>
+  {% endif %}
+{% endblock %}
