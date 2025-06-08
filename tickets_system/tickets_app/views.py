@@ -134,7 +134,7 @@ def finalize_cart(request):
     order.save()
 
     messages.success(request, "Zakup zakończony sukcesem!")
-    return redirect('my_tickets')
+    return redirect('my_orders')
 
 
 def register(request):
@@ -154,32 +154,21 @@ def register(request):
     return render(request, 'registration/register.html', {'form': form})
 
 
+@login_required
+def my_orders(request):
+    orders = Order.objects.filter(user=request.user).order_by('-updated_at')
+
+    return render(request, 'tickets_app/my_orders.html', {'orders': orders})
 
 @login_required
-def my_tickets(request):
-    user_id = request.user.id
-    with connection.cursor() as cursor:
-        cursor.execute("""
-            SELECT order_id, "ticket_UUID", event_id, event_name, seat, updated_at
-            FROM user_tickets_view
-            WHERE user_id = %s
-        """, [user_id])
-        rows = cursor.fetchall()
+def order_details(request, order_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    details = OrderDetails.objects.filter(order=order).select_related('ticket', 'participant')
 
-    tickets = [
-        {
-            'order_id': row[0],
-            'ticket_id': row[1],
-            'event_id': row[2],
-            'event_name': row[3],
-            'seat_number': row[4],
-            'updated_at': row[5],
-        }
-        for row in rows
-    ]
-
-    return render(request, 'tickets_app/my_tickets.html', {'tickets': tickets})
-
+    return render(request, 'tickets_app/order_details.html', {
+        'order': order,
+        'details': details
+    })
 
 @require_POST
 @login_required
@@ -187,24 +176,20 @@ def cancel_order(request, order_id):
     user = request.user
 
     try:
-        # Pobierz zamówienie użytkownika
         order = Order.objects.get(id=order_id, user=user)
 
         if order.status == 'canceled':
             messages.warning(request, "Zamówienie już zostało anulowane.")
-            return redirect('my_tickets')
+            return redirect('my_orders')
 
-        # Znajdź wszystkie bilety w tym zamówieniu
         order_details = OrderDetails.objects.filter(order=order)
 
-        # Zmień status każdego biletu z powrotem na 'available'
         for detail in order_details:
             ticket = detail.ticket
             ticket.status = 'available'
             ticket.reserved_until = None
             ticket.save()
 
-        # Zmień status zamówienia
         order.status = 'canceled'
         order.save()
 
@@ -214,4 +199,4 @@ def cancel_order(request, order_id):
     except Exception as e:
         messages.error(request, f"Wystąpił błąd: {e}")
 
-    return redirect('my_tickets')
+    return redirect('my_orders')
