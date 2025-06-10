@@ -1,20 +1,19 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Tickets_app{% endblock %}
+{% block title %}My Tickets App{% endblock %}
 
 {% block content %}
-    <h1>Upcoming Events</h1>
+<head>
+    <meta charset="UTF-8">
+    <title>Strona Główna</title>
+</head>
+<body>
+    <h1>Witaj na stronie z biletami!</h1>
+    <p>Cześć! To jest strona główna Twojej aplikacji.</p>
 
-    {% if latest_events %}
-        <ul>
-        {% for event in latest_events %}
-            <li>
-                <a href="{% url 'tickets' event.id %}">{{ event.name }}</a>
-            </li>
-        {% endfor %}
-        </ul>
-    {% else %}
-        <p>No polls are available.</p>
-    {% endif %}
+    <a href="{% url 'events' %}">
+        <button>Przejdź do wydarzeń</button>
+    </a>
+</body>
 {% endblock %}

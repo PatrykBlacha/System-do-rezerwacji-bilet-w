@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Upcoming Events{% endblock %}
+
+{% block content %}
+    <h1>Nadchodzące Wydarzenia</h1>
+
+    <form method="get" action="{% url 'events' %}">
+        <input type="text"
+               name="search"
+               placeholder="Wyszukaj wydarzenia..."
+               value="{{ search_query }}">
+        <button type="submit">Szukaj</button>
+    </form>
+
+    {% if latest_events %}
+        <ul>
+        {% for event in latest_events %}
+            <li>
+                <a href="{% url 'tickets' event.id %}">{{ event.name }} | {{ event.event_date }} | Dostępne bilety: {{event.available_tickets }}</a>
+            </li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No polls are available.</p>
+    {% endif %}
+{% endblock %}
