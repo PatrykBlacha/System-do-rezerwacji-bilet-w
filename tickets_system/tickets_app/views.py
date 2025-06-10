@@ -122,7 +122,7 @@ def cart_view(request):
                 participant.first_name = request.POST.get(f'first_name_{participant.id}', '')
                 participant.last_name = request.POST.get(f'last_name_{participant.id}', '')
                 participant.pesel = request.POST.get(f'pesel_{participant.id}', '')
-                participant.save()
+
             return redirect('finalize_cart')
 
     except Order.DoesNotExist:
@@ -223,4 +223,4 @@ def cancel_order(request, order_id):
     except Exception as e:
         messages.error(request, f"Wystąpił błąd: {e}")
 
-    return redirect('my_orders')
+    return redirect('order_details', order_id=order_id)
