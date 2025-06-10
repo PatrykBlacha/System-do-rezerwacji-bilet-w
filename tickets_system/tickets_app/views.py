@@ -8,20 +8,29 @@ from django.views import generic
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views.decorators.http import require_POST
+from django.views.generic import TemplateView
 
 from .models import Ticket, Event, Participant, Order, OrderDetails
 from django.contrib.auth import login
 from .forms import CustomUserCreationForm
-from django.db import connection
 
-class IndexView(generic.ListView):
+class IndexView(TemplateView):
     template_name = 'tickets_app/index.html'
+
+
+class EventsView(generic.ListView):
+    template_name = 'tickets_app/events.html'
     context_object_name = 'latest_events'
 
     def get_queryset(self):
         now = timezone.now()
         unlock_reserved_tickets()
-        return Event.objects.all().filter(event_date__gt=now).order_by('event_date')
+        search_query = self.request.GET.get('search', '')
+        events = Event.objects.filter(event_date__gt=now).order_by('event_date')
+        if search_query:
+            events = events.filter(name__icontains=search_query)
+
+        return events
 
 def unlock_reserved_tickets():
     now = timezone.now()
@@ -60,16 +69,25 @@ def tickets_view(request, event_id):
 
         try:
             with transaction.atomic():
-                order = Order.objects.create(user=request.user, status='pending')
+
+                try:
+                    order = Order.objects.get(
+                        user=request.user,
+                        status='pending'
+                    )
+                except Order.DoesNotExist:
+                    order = Order.objects.create(
+                        user=request.user,
+                        status='pending'
+                    )
 
                 for ticket_id in selected_ticket_ids:
                     ticket = Ticket.objects.select_for_update().get(id=ticket_id)
                     if ticket.status != 'available':
                         raise Exception(f"Bilet {ticket.seat} jest już niedostępny.")
 
-                    participant = Participant.objects.create(user=request.user)
+                    participant = Participant.objects.create(user=request.user, first_name='', last_name='', pesel='')
                     ticket.status = 'reserved'
-                    ticket.reserved_until = timezone.now() + timedelta(minutes=10)
                     ticket.save()
 
                     OrderDetails.objects.create(
@@ -92,11 +110,11 @@ def tickets_view(request, event_id):
 def cart_view(request):
     try:
         order = Order.objects.get(user=request.user, status='pending')
-    except Order.DoesNotExist:
-        order = None
-        order_details = []
-    else:
         order_details = OrderDetails.objects.filter(order=order).select_related('ticket', 'participant')
+        total = order.total_price()
+        for detail in order_details:
+            detail.ticket.reserved_until = timezone.now() + timedelta(minutes=10)
+            detail.ticket.save()
 
         if request.method == "POST":
             for detail in order_details:
@@ -107,9 +125,15 @@ def cart_view(request):
                 participant.save()
             return redirect('finalize_cart')
 
+    except Order.DoesNotExist:
+        order = None
+        order_details = []
+        total = 0
+
     return render(request, 'tickets_app/cart.html', {
         'order': order,
-        'order_details': order_details
+        'order_details': order_details,
+        'total': total
     })
 
 
@@ -134,7 +158,7 @@ def finalize_cart(request):
     order.save()
 
     messages.success(request, "Zakup zakończony sukcesem!")
-    return redirect('my_orders')
+    return redirect('order_details', order_id=order.id)
 
 
 def register(request):

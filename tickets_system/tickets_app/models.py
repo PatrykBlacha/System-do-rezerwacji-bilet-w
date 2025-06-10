@@ -10,6 +10,8 @@ class Event(models.Model):
         return self.name
     class Meta:
         db_table = 'events'
+    def available_tickets(self):
+        return len(Ticket.objects.filter(event=self, status='available'))
 
 class Ticket(models.Model):
     STATUS_CHOICES = [
@@ -37,6 +39,7 @@ class Participant(models.Model):
     class Meta:
         db_table = 'participants'
 
+
 class Order(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
@@ -51,6 +54,10 @@ class Order(models.Model):
         return f"Order {self.id}"
     class Meta:
         db_table = 'orders'
+    def total_price(self):
+        return sum(detail.ticket.price for detail in OrderDetails.objects.filter(order=self))
+
+
 
 class OrderDetails(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE)

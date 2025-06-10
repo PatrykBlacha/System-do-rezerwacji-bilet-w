@@ -9,13 +9,16 @@
     {% csrf_token %}
     {% for detail in order_details %}
         <div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
-            <p><strong>Miejsce:</strong> {{ detail.ticket.seat }} | <strong>Cena:</strong> {{ detail.ticket.price }}</p>
+            <p> {{ detail.ticket.event.name }} | <strong>Data:</strong> {{ detail.ticket.event.event_date }} | <strong>Miejsce:</strong> {{ detail.ticket.seat }} | <strong>Cena:</strong> {{ detail.ticket.price }}</p>
             <input type="text" name="first_name_{{ detail.participant.id }}" value="{{ detail.participant.first_name }}" placeholder="Imię" required>
             <input type="text" name="last_name_{{ detail.participant.id }}" value="{{ detail.participant.last_name }}" placeholder="Nazwisko" required>
             <input type="text" name="pesel_{{ detail.participant.id }}" value="{{ detail.participant.pesel }}" placeholder="PESEL" required>
         </div>
     {% endfor %}
-    <button type="submit">Finalizuj zakup</button>
+    <p>Total: {{ total }}</p>
+    <button type="submit" onclick="return confirm('Dane osobowe muszą być zgodne z osobą wchodzącą na mecz.\nCzy na pewno chcesz kontynuować zakup?');">
+        Kup bilety
+    </button>
 </form>
 {% else %}
     <p>Koszyk jest pusty.</p>
