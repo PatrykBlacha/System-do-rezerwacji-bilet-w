@@ -7,11 +7,8 @@
         <div class="container-fluid py-5">
             <h1 class="display-5 fw-bold">Witaj w My Tickets App!</h1>
             <p class="col-md-8 fs-4">Twoje miejsce do zarządzania biletami na najlepsze wydarzenia. Przeglądaj, kupuj i miej wszystko pod kontrolą.</p>
-            {% if not user.is_authenticated %}
-                <a href="{% url 'register' %}" class="btn btn-primary btn-lg" type="button">Zacznij teraz - Zarejestruj się!</a>
-            {% else %}
-                 <a href="{% url 'events' %}" class="btn btn-success btn-lg" type="button">Zobacz dostępne wydarzenia</a>
-            {% endif %}
+            <a href="{% url 'events' %}" class="btn btn-success btn-lg" type="button">Zobacz dostępne wydarzenia</a>
+
         </div>
     </div>
 
