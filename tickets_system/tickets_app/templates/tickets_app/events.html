@@ -1,12 +1,24 @@
 {% extends "base.html" %}
-{% load static %}
 
-{% block title %}Tickets_app{% endblock %}
+{% block title %}Nadchodzące Wydarzenia{% endblock %}
 
 {% block content %}
     <div class="text-center mb-4">
         <h2 class="display-5 fw-bold">Nadchodzące wydarzenia</h2>
         <p class="text-muted">Wybierz wydarzenie, aby zobaczyć dostępne bilety</p>
+    </div>
+
+    <div class="row justify-content-center mb-4">
+        <div class="col-md-6">
+            <form method="get" action="{% url 'events' %}" class="input-group">
+                <input type="text"
+                       name="search"
+                       class="form-control"
+                       placeholder="Wyszukaj wydarzenia..."
+                       value="{{ search_query }}">
+                <button type="submit" class="btn btn-primary">Szukaj</button>
+            </form>
+        </div>
     </div>
 
     {% if latest_events %}
@@ -16,7 +28,10 @@
                     <div class="card h-100 shadow-sm border-0">
                         <div class="card-body d-flex flex-column">
                             <h5 class="card-title">{{ event.name }}</h5>
-                            <p class="card-text text-muted">{{ event.date|date:"d.m.Y H:i" }}</p>
+                            <p class="card-text text-muted">
+                                <i class="bi bi-calendar"></i> {{ event.event_date|date:"d.m.Y" }}<br> {# Removed H:i #}
+                                <i class="bi bi-ticket-fill"></i> Dostępne bilety: {{ event.available_tickets }}
+                            </p>
                             <div class="mt-auto">
                                 <a href="{% url 'tickets' event.id %}" class="btn btn-primary w-100">
                                     Zobacz bilety
