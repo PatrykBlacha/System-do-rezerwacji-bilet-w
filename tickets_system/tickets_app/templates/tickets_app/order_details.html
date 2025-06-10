@@ -1,24 +1,38 @@
 {% extends "base.html" %}
 
-{% block title %}Szczegóły Zamówienia{% endblock %}
+{% block title %}Szczegóły Zamówienia #{{ order.id }}{% endblock %}
 
 {% block content %}
-  <h2>Zamówienie #{{ order.id }}</h2>
-  <p>Status: {{ order.status }}</p>
-  <p>Data: {{ order.updated_at|date:"Y-m-d H:i" }}</p>
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Szczegóły Zamówienia #{{ order.id }}</h2>
+    <a href="{% url 'my_orders' %}" class="btn btn-secondary">← Powrót do zamówień</a>
+  </div>
 
-  <h3>Bilety:</h3>
-  <ul>
+  <div class="card mb-4">
+    <div class="card-header">
+      Informacje o zamówieniu
+    </div>
+    <div class="card-body">
+        <p><strong>Status:</strong> <span class="badge bg-primary">{{ order.status }}</span></p>
+        <p><strong>Data aktualizacji:</strong> {{ order.updated_at|date:"Y-m-d H:i" }}</p>
+    </div>
+  </div>
+
+  <h3>Zakupione bilety:</h3>
+  <div class="list-group">
     {% for detail in details %}
-      <li>
-        Wydarzenie: {{ detail.ticket.event.name }} |
-          Data: {{ detail.ticket.event.event_date }} |
-        Miejsce: {{ detail.ticket.seat }} |
-        Uczestnik: {{ detail.participant.first_name }} {{ detail.participant.last_name }} |
-          UUID: {{ detail.ticket_UUID }}
-      </li>
+        <div class="list-group-item">
+            <div class="d-flex w-100 justify-content-between">
+                <h5 class="mb-1">{{ detail.ticket.event.name }}</h5>
+                <small class="text-muted">{{ detail.ticket.event.event_date }}</small>
+            </div>
+            <p class="mb-1">
+                <strong>Uczestnik:</strong> {{ detail.participant.first_name }} {{ detail.participant.last_name }}<br>
+                <strong>Miejsce:</strong> {{ detail.ticket.seat }}
+            </p>
+            <small class="text-muted">UUID: {{ detail.ticket_UUID }}</small>
+        </div>
     {% endfor %}
-  </ul>
+  </div>
 
-  <a href="{% url 'my_orders' %}">← Powrót do zamówień</a>
 {% endblock %}

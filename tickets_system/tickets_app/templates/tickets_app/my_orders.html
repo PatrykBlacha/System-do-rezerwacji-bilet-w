@@ -3,31 +3,38 @@
 {% block title %}Moje Zamówienia{% endblock %}
 
 {% block content %}
-  <h2>Moje Zamówienia</h2>
+  <h2 class="mb-4">Moje Zamówienia</h2>
   {% if orders %}
-    <ul>
+    <div class="list-group">
       {% for order in orders %}
-        {% if order.status != "pending" %}
-          <li>
-            Zamówienie #{{ order.id }} |
-            Status: {{ order.status }} |
-            Data: {{ order.updated_at|date:"Y-m-d H:i" }} |
-            Wartość: {{ order.total_price }} |
-            <a href="{% url 'order_details' order.id %}">Szczegóły</a>
-
-            {% if order.status != "canceled" %}
-              <form action="{% url 'cancel_order' order.id %}" method="post" style="display:inline;">
-                {% csrf_token %}
-                <button type="submit" onclick="return confirm('Na pewno chcesz anulować to zamówienie?');">
-                  Anuluj zamówienie
-                </button>
-              </form>
-            {% endif %}
-          </li>
-        {% endif %}
+        <div class="list-group-item list-group-item-action flex-column align-items-start">
+            <div class="d-flex w-100 justify-content-between">
+                <h5 class="mb-1">Zamówienie #{{ order.id }}</h5>
+                <small class="text-muted">{{ order.updated_at|date:"Y-m-d H:i" }}</small>
+            </div>
+            <p class="mb-1">
+                <strong>Status:</strong> <span class="badge
+                    {% if order.status == 'completed' %}bg-success{% elif order.status == 'canceled' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                    {{ order.status }}
+                </span>
+            </p>
+            <div class="mt-2">
+                <a href="{% url 'order_details' order.id %}" class="btn btn-info btn-sm">Szczegóły</a>
+                {% if order.status != "canceled" and order.status != "completed" %}
+                    <form action="{% url 'cancel_order' order.id %}" method="post" class="d-inline ms-2">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Na pewno chcesz anulować to zamówienie?');">
+                        Anuluj zamówienie
+                      </button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
       {% endfor %}
-    </ul>
+    </div>
   {% else %}
-    <p>Brak zamówień.</p>
+    <div class="alert alert-info" role="alert">
+      Nie masz jeszcze żadnych zamówień.
+    </div>
   {% endif %}
 {% endblock %}
