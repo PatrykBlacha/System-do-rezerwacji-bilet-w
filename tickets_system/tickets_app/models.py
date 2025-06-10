@@ -28,6 +28,7 @@ class Ticket(models.Model):
         return f"Ticket: {self.id} for {self.event.name}, seat: {self.seat}, price: {self.price}"
     class Meta:
         db_table = 'tickets'
+        unique_together = ('event', 'seat')
 
 class Participant(models.Model):
     first_name = models.CharField(max_length=64, null=True, blank=True)
