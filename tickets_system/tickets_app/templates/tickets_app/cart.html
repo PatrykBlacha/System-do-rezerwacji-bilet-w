@@ -25,8 +25,8 @@
                             <input type="text" class="form-control" id="last_name_{{ detail.participant.id }}" name="last_name_{{ detail.participant.id }}" value="{{ detail.participant.last_name }}" required>
                         </div>
                         <div class="col-md-4">
-                             <label for="pesel_{{ detail.participant.id }}" class="form-label">PESEL</label>
-                            <input type="text" class="form-control" id="pesel_{{ detail.participant.id }}" name="pesel_{{ detail.participant.id }}" value="{{ detail.participant.pesel }}" required>
+                            <label for="pesel_{{ detail.participant.id }}" class="form-label">PESEL</label>
+                            <input type="text" class="form-control" id="pesel_{{ detail.participant.id }}" name="pesel_{{ detail.participant.id }}" value="{{ detail.participant.pesel }}" required maxlength="11" minlength="11" pattern="[0-9]{11}" title="PESEL musi składać się z 11 cyfr.">
                         </div>
                     </div>
                 </div>
