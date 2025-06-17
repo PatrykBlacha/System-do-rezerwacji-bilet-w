@@ -76,11 +76,11 @@ WSGI_APPLICATION = 'tickets_system.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'railway',
-        'USER': 'postgres',
-        'PASSWORD': 'crdBtEgqNnLVdqPHTffeNpwodxhKHpdo',
-        'HOST': 'shinkansen.proxy.rlwy.net',
-        'PORT': '43317',
+        'NAME': 'your_db_name',
+        'USER': 'your_username',
+        'PASSWORD': 'your_password',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 
